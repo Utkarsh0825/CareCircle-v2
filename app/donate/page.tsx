@@ -11,7 +11,6 @@ import { getSession } from '@/lib/session'
 import { getRoot, updateRoot } from '@/lib/localStore'
 import { format } from 'date-fns'
 import Link from 'next/link'
-import { TourTrigger } from '@/components/tour/tour-trigger'
 
 const GIFT_AMOUNTS = [
   { value: 1000, label: '$10' },
@@ -34,6 +33,13 @@ export default function GiftPage() {
     setSession(getSession())
     setRoot(getRoot())
   }, [])
+
+  // Get user's role in this group
+  const userMembership = root.members.find(
+    m => m.groupId === session.group?.id && m.userId === session.user?.id && m.status === 'ACTIVE'
+  )
+  const userRole = userMembership?.role || 'CAREGIVER'
+  const isPatient = userRole === 'PATIENT'
 
   const handleGift = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -151,90 +157,153 @@ export default function GiftPage() {
         <Card>
           <CardHeader className="text-center">
             <div className="flex items-center justify-between mb-4">
-              <CardTitle className="text-2xl">Support Our Circle</CardTitle>
+              <CardTitle className="text-2xl">
+                {isPatient ? "Gifts Received" : "Support Our Circle"}
+              </CardTitle>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" asChild>
                   <Link href="/dashboard">← Back to Dashboard</Link>
                 </Button>
-                <TourTrigger page="donate" variant="outline" size="sm" />
               </div>
             </div>
             <CardDescription>
-              Your gift helps support our care circle and those in need
+              {isPatient 
+                ? "View the generous gifts and support you've received from your care circle"
+                : "Your gift helps support our care circle and those in need"
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form id="gift-form" onSubmit={handleGift} className="space-y-6">
-              {/* Amount Selection */}
-              <div id="amount-selection" className="space-y-3">
-                <Label>Select Amount</Label>
-                <RadioGroup 
-                  value={selectedAmount.toString()} 
-                  onValueChange={(value) => setSelectedAmount(parseInt(value))}
-                >
-                  <div className="grid grid-cols-3 gap-3">
-                    {GIFT_AMOUNTS.map((amount) => (
-                      <div key={amount.value} className="flex items-center space-x-2">
-                        <RadioGroupItem value={amount.value.toString()} id={`amount-${amount.value}`} />
-                        <Label htmlFor={`amount-${amount.value}`} className="cursor-pointer">
-                          {amount.label}
-                        </Label>
+            {isPatient ? (
+              /* Patient View - Show Gifts Received */
+              <div className="space-y-6">
+                {/* Total Gifts */}
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-primary">
+                    ${(totalGifts / 100).toFixed(2)}
+                  </div>
+                  <p className="text-muted-foreground">Total gifts received</p>
+                </div>
+
+                {/* Recent Gifts List */}
+                <div className="space-y-4">
+                  <h3 className="font-medium">Recent Gifts</h3>
+                  {root.donations
+                    .filter(d => d.groupId === session.group!.id)
+                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                    .slice(0, 10)
+                    .map((gift) => (
+                      <div key={gift.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                            <Heart className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">
+                              {root.users[gift.donorUserId!]?.name || 'Anonymous'}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {format(new Date(gift.createdAt), 'MMM d, yyyy')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-lg font-semibold">
+                          ${(gift.amountCents / 100).toFixed(2)}
+                        </div>
                       </div>
                     ))}
-                  </div>
-                </RadioGroup>
-              </div>
+                  
+                  {root.donations.filter(d => d.groupId === session.group!.id).length === 0 && (
+                    <div className="text-center py-8">
+                      <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">No gifts received yet</p>
+                      <p className="text-sm text-muted-foreground">
+                        Your caregivers can send gifts to show their support
+                      </p>
+                    </div>
+                  )}
+                </div>
 
-              {/* Custom Amount */}
-              <div className="space-y-2">
-                <Label htmlFor="custom-amount">Or enter custom amount</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="custom-amount"
-                    type="number"
-                    min="1"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={customAmount}
-                    onChange={(e) => setCustomAmount(e.target.value)}
-                    className="pl-8"
-                  />
+                <div className="text-center text-sm text-muted-foreground">
+                  <p>
+                    💝 Gifts from your care circle show their love and support for your journey
+                  </p>
                 </div>
               </div>
+            ) : (
+              /* Caregiver View - Show Gift Form */
+              <form id="gift-form" onSubmit={handleGift} className="space-y-6">
+                {/* Amount Selection */}
+                <div id="amount-selection" className="space-y-3">
+                  <Label>Select Amount</Label>
+                  <RadioGroup 
+                    value={selectedAmount.toString()} 
+                    onValueChange={(value) => setSelectedAmount(parseInt(value))}
+                  >
+                    <div className="grid grid-cols-3 gap-3">
+                      {GIFT_AMOUNTS.map((amount) => (
+                        <div key={amount.value} className="flex items-center space-x-2">
+                          <RadioGroupItem value={amount.value.toString()} id={`amount-${amount.value}`} />
+                          <Label htmlFor={`amount-${amount.value}`} className="cursor-pointer">
+                            {amount.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </RadioGroup>
+                </div>
 
-              {/* Gift Summary */}
-              {session.group && (
-                <div className="bg-muted p-4 rounded-lg">
-                  <h3 className="font-medium mb-2">Gift Summary</h3>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>Amount:</span>
-                      <span>${((customAmount ? parseInt(customAmount) * 100 : selectedAmount) / 100).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Circle:</span>
-                      <span>{session.group.name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Total raised:</span>
-                      <span>${(totalGifts / 100).toFixed(2)}</span>
-                    </div>
+                {/* Custom Amount */}
+                <div className="space-y-2">
+                  <Label htmlFor="custom-amount">Or enter custom amount</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="custom-amount"
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={customAmount}
+                      onChange={(e) => setCustomAmount(e.target.value)}
+                      className="pl-8"
+                    />
                   </div>
                 </div>
-              )}
 
-              <Button type="submit" className="w-full" disabled={isProcessing}>
-                {isProcessing ? 'Processing...' : 'Send Gift'}
-              </Button>
+                {/* Gift Summary */}
+                {session.group && (
+                  <div className="bg-muted p-4 rounded-lg">
+                    <h3 className="font-medium mb-2">Gift Summary</h3>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span>Amount:</span>
+                        <span>${((customAmount ? parseInt(customAmount) * 100 : selectedAmount) / 100).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Circle:</span>
+                        <span>{session.group.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Total raised:</span>
+                        <span>${(totalGifts / 100).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-              <div className="text-center text-sm text-muted-foreground">
-                <p>
-                  This is a local demo. In a real application, this would integrate with 
-                  payment processors like Stripe.
-                </p>
-              </div>
-            </form>
+                <Button type="submit" className="w-full" disabled={isProcessing}>
+                  {isProcessing ? 'Processing...' : 'Send Gift'}
+                </Button>
+
+                <div className="text-center text-sm text-muted-foreground">
+                  <p>
+                    This is a local demo. In a real application, this would integrate with 
+                    payment processors like Stripe.
+                  </p>
+                </div>
+              </form>
+            )}
           </CardContent>
         </Card>
 

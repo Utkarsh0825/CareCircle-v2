@@ -4,10 +4,8 @@ import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import { SeedProvider } from '@/components/seed-provider'
 import { ThemeProvider } from '@/components/theme-provider'
-import { TourProvider } from '@/components/tour/tour-provider'
-import { TourTooltip } from '@/components/tour/tour-tooltip'
 import { ChatBotProvider, ChatBot } from '@/components/chatbot'
-import { ThemeApplier } from '@/components/theme-applier'
+import { ColorSchemeApplier } from '@/components/color-scheme-applier'
 import { AutoLogin } from '@/components/auto-login'
 
 export const metadata: Metadata = {
@@ -34,16 +32,12 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <ThemeApplier />
+          <ColorSchemeApplier />
           <ChatBotProvider>
-            <TourProvider>
-              <SeedProvider>
-                <AutoLogin />
-                {children}
-                <TourTooltip />
-              </SeedProvider>
-            </TourProvider>
-            <ChatBot />
+            <SeedProvider>
+              <AutoLogin />
+              {children}
+            </SeedProvider>
           </ChatBotProvider>
         </ThemeProvider>
       </body>

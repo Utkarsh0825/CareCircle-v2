@@ -5,8 +5,6 @@ import { useEffect, useState } from 'react'
 import { SeedProvider } from './seed-provider'
 import { ThemeApplier } from './theme-applier'
 import { ChatBotProvider, ChatBot } from './chatbot'
-import { TourProvider } from './tour/tour-provider'
-import { TourTooltip } from './tour/tour-tooltip'
 
 interface ConditionalLayoutProps {
   children: React.ReactNode
@@ -29,7 +27,7 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
   const isAuthPage = pathname?.startsWith('/auth/') || pathname === '/join'
   
   if (isAuthPage) {
-    // Auth pages get minimal rendering - no tour, no theme manipulation, no chatbot
+    // Auth pages get minimal rendering - no theme manipulation, no chatbot
     return (
       <SeedProvider>
         {children}
@@ -42,12 +40,9 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
     <>
       <ThemeApplier />
       <ChatBotProvider>
-        <TourProvider>
-          <SeedProvider>
-            {children}
-            <TourTooltip />
-          </SeedProvider>
-        </TourProvider>
+        <SeedProvider>
+          {children}
+        </SeedProvider>
         <ChatBot />
       </ChatBotProvider>
     </>

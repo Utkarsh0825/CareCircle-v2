@@ -40,16 +40,32 @@ export function makeIcs(event: IcsEvent): string {
 }
 
 export function downloadIcs(icsContent: string, filename: string = 'event.ics'): void {
-  const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  
-  URL.revokeObjectURL(url)
+  try {
+    // Use a safer download approach without DOM manipulation
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    
+    // Use window.open as a fallback to avoid DOM manipulation
+    const newWindow = window.open(url, '_blank')
+    if (newWindow) {
+      newWindow.document.title = filename
+      setTimeout(() => {
+        newWindow.close()
+        URL.revokeObjectURL(url)
+      }, 1000)
+    } else {
+      // If popup blocked, just copy to clipboard
+      navigator.clipboard?.writeText(icsContent).then(() => {
+        alert('ICS content copied to clipboard. Please save it as a .ics file.')
+      }).catch(() => {
+        console.warn('Could not copy to clipboard')
+      })
+      URL.revokeObjectURL(url)
+    }
+  } catch (error) {
+    console.error('Failed to download ICS file:', error)
+    // Fallback: just alert the user
+    alert('Download failed. Please try again.')
+  }
 }
 

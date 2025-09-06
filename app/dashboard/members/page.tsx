@@ -9,10 +9,9 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { Users, Plus, Shield, User, Copy, Check, Mail, Trash2, AlertTriangle } from 'lucide-react'
+import { Users, Plus, User, Copy, Check, Mail, Trash2, AlertTriangle, Heart } from 'lucide-react'
 import { getSession } from '@/lib/session'
 import { getRoot, updateRoot } from '@/lib/localStore'
-import { TourTrigger } from '@/components/tour/tour-trigger'
 import Link from 'next/link'
 import { UserAvatar } from '@/components/user-avatar'
 
@@ -43,7 +42,13 @@ export default function SuperstarsPage() {
     }))
     .filter(m => m.user)
 
-  const canManageMembers = session.user.role === 'ADMIN' || session.user.role === 'CAREGIVER'
+  // Get user's role in this group
+  const userMembership = root.members.find(
+    m => m.groupId === session.group!.id && m.userId === session.user!.id && m.status === 'ACTIVE'
+  )
+  const userRole = userMembership?.role || 'CAREGIVER'
+  const isPatient = userRole === 'PATIENT'
+  const canManageMembers = isPatient
 
 
   const handleSendInvite = (e: React.FormEvent) => {
@@ -108,7 +113,7 @@ export default function SuperstarsPage() {
     }
   }
 
-  const handleUpdateRole = (memberId: string, newRole: 'MEMBER' | 'ADMIN') => {
+  const handleUpdateRole = (memberId: string, newRole: 'CAREGIVER') => {
     updateRoot(prev => ({
       ...prev,
       members: prev.members.map(m => 
@@ -133,10 +138,9 @@ export default function SuperstarsPage() {
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
-      case 'CAREGIVER': return 'default'
-      case 'WARRIOR': return 'default'
-      case 'ADMIN': return 'secondary'
-      default: return 'outline'
+      case 'PATIENT': return 'default'
+      case 'CAREGIVER': return 'secondary'
+      default: return 'secondary'
     }
   }
 
@@ -153,7 +157,6 @@ export default function SuperstarsPage() {
           <Button variant="outline" size="sm" asChild>
             <Link href="/dashboard">← Back to Dashboard</Link>
           </Button>
-          <TourTrigger page="members" variant="outline" size="sm" />
           {canManageMembers && (
             <div className="flex gap-2">
               <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
@@ -237,26 +240,13 @@ export default function SuperstarsPage() {
                   
                   <div className="flex items-center gap-3">
                     <Badge variant={getRoleBadgeVariant(member.role)}>
-                      {member.role === 'ADMIN' && <Shield className="h-3 w-3 mr-1" />}
-                      {member.role === 'CAREGIVER' && <User className="h-3 w-3 mr-1" />}
-                      {member.role === 'WARRIOR' && <User className="h-3 w-3 mr-1" />}
-                      {member.role}
+                      {member.role === 'PATIENT' && <User className="h-3 w-3 mr-1" />}
+                      {member.role === 'CAREGIVER' && <Heart className="h-3 w-3 mr-1" />}
+                      {member.role === 'PATIENT' ? 'Patient' : 'Caregiver'}
                     </Badge>
                     
                     {canManageMembers && member.userId !== session.user.id && (
                       <div className="flex gap-2">
-                        <Select 
-                          value={member.role} 
-                          onValueChange={(value: 'MEMBER' | 'ADMIN') => handleUpdateRole(member.userId, value)}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="MEMBER">Member</SelectItem>
-                            <SelectItem value="ADMIN">Admin</SelectItem>
-                          </SelectContent>
-                        </Select>
                         
                         <Button 
                           variant="outline" 

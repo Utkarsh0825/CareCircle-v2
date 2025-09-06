@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { format } from 'date-fns'
 import { Mail as MailIcon, Calendar, User, HelpCircle } from 'lucide-react'
-import { TourTrigger } from '@/components/tour/tour-trigger'
 import Link from 'next/link'
 
 export default function DevMailboxPage() {
@@ -28,7 +27,6 @@ export default function DevMailboxPage() {
           <Button variant="outline" size="sm" asChild>
             <Link href="/dashboard">← Back to Dashboard</Link>
           </Button>
-          <TourTrigger page="dev-mailbox" variant="outline" size="sm" />
         </div>
       </div>
 

@@ -14,7 +14,6 @@ import { useRouter } from "next/navigation"
 import { login, getUserGroups, selectGroup } from "@/lib/session"
 import { getRoot } from "@/lib/localStore"
 import { useTheme } from "next-themes"
-import { TourTrigger } from "@/components/tour/tour-trigger"
 
 export default function SignInPage() {
   const [email, setEmail] = useState("")
@@ -36,18 +35,16 @@ export default function SignInPage() {
 
     try {
       const user = login(email, rememberMe)
+      
+      // Check if user has any groups
       const userGroups = getUserGroups(user.id)
       
       if (userGroups.length === 0) {
-        // No groups, redirect to join
-        router.push("/join")
-      } else if (userGroups.length === 1) {
-        // One group, auto-select and redirect to dashboard
-        selectGroup(userGroups[0].id, rememberMe)
-        router.push("/dashboard")
+        // New user - redirect to portal for role selection
+        router.push("/portal")
       } else {
-        // Multiple groups, redirect to group selection
-        router.push("/auth/select-group")
+        // Existing user - redirect to portal for role-aware routing
+        router.push("/portal")
       }
     } catch (err) {
       setError("Failed to sign in. Please try again.")
@@ -82,19 +79,18 @@ export default function SignInPage() {
                       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                       className="ml-4"
                     >
-                      {theme === 'dark' ? (
+                      {mounted && theme === 'dark' ? (
                         <Sun className="h-4 w-4" />
                       ) : (
                         <Moon className="h-4 w-4" />
                       )}
                     </Button>
-                    <TourTrigger page="signin" variant="ghost" size="sm" className="ml-2" />
                   </div>
 
         <Card className="border-border/50">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Welcome Back</CardTitle>
-            <CardDescription>Sign in to your support circle</CardDescription>
+            <CardDescription>Sign in to your support circle. No password required - we'll remember you on this device.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <form id="signin-form" onSubmit={handleSubmit} className="space-y-4">

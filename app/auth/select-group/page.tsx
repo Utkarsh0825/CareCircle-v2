@@ -86,7 +86,7 @@ export default function SelectGroupPage() {
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="ml-4"
           >
-            {theme === 'dark' ? (
+            {mounted && theme === 'dark' ? (
               <Sun className="h-4 w-4" />
             ) : (
               <Moon className="h-4 w-4" />

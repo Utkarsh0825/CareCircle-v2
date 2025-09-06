@@ -6,15 +6,33 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { MessageCircle, X, Send, Bot, User, AlertTriangle } from 'lucide-react'
+import { MessageCircle, X, Send, Bot, User, AlertTriangle, Navigation, Calendar, Users, Settings, Heart, DollarSign } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useChatBot } from './chatbot-provider'
+import { useRouter, usePathname } from 'next/navigation'
+import { useTheme } from 'next-themes'
 
 interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
+  quickActions?: QuickAction[]
+  relevantFeatures?: RelevantFeature[]
+}
+
+interface QuickAction {
+  type: 'navigate' | 'action' | 'info'
+  target: string
+  label: string
+  description: string
+}
+
+interface RelevantFeature {
+  name: string
+  description: string
+  path: string
+  category: string
 }
 
 interface ChatBotProps {
@@ -24,12 +42,22 @@ interface ChatBotProps {
 export function ChatBot({ className }: ChatBotProps) {
   const { isEnabled } = useChatBot()
   const [isOpen, setIsOpen] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
+  const { theme, setTheme } = useTheme()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'assistant',
-      content: "Hi! I'm CareBot, your AI care companion. I'm here to help you navigate your care journey, organize tasks, and provide support. How can I help you today?",
-      timestamp: new Date()
+      content: "Hi! I'm CareBot, your AI care companion. I'm here to help you navigate your care journey, organize tasks, and provide support. I can help you with everything in the CareCircle app - from managing your calendar to changing themes! How can I help you today?",
+      timestamp: new Date(),
+      quickActions: [
+        { type: 'navigate', target: '/dashboard/calendar', label: 'Open Calendar', description: 'View and manage your appointments' },
+        { type: 'navigate', target: '/dashboard/updates', label: 'Share Update', description: 'Let your circle know how you\'re doing' },
+        { type: 'navigate', target: '/dashboard/members', label: 'Manage Superstars', description: 'View and manage your support circle' },
+        { type: 'navigate', target: '/dashboard/settings', label: 'Open Settings', description: 'Customize your app experience' },
+        { type: 'navigate', target: '/donate', label: 'Send Gift', description: 'Support your care circle' }
+      ]
     }
   ])
   const [inputMessage, setInputMessage] = useState('')
@@ -83,7 +111,8 @@ export function ChatBot({ className }: ChatBotProps) {
           conversationHistory: messages.map(msg => ({
             role: msg.role,
             content: msg.content
-          }))
+          })),
+          currentPath: pathname
         }),
       })
 
@@ -97,7 +126,9 @@ export function ChatBot({ className }: ChatBotProps) {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: data.response,
-        timestamp: new Date()
+        timestamp: new Date(),
+        quickActions: data.quickActions || [],
+        relevantFeatures: data.relevantFeatures || []
       }
 
       setMessages(prev => [...prev, botMessage])
@@ -136,6 +167,40 @@ export function ChatBot({ className }: ChatBotProps) {
 
   const toggleChat = () => {
     setIsOpen(!isOpen)
+  }
+
+  const handleQuickAction = (action: QuickAction) => {
+    if (action.type === 'navigate') {
+      router.push(action.target)
+      setIsOpen(false) // Close chat after navigation
+    } else if (action.type === 'action') {
+      if (action.target === 'theme-toggle') {
+        setTheme(theme === 'dark' ? 'light' : 'dark')
+      }
+      // Add more action handlers as needed
+    }
+  }
+
+  const getActionIcon = (action: QuickAction) => {
+    switch (action.target) {
+      case '/dashboard/calendar':
+      case '/dashboard/calendar/new':
+        return <Calendar className="h-4 w-4" />
+      case '/dashboard/members':
+        return <Users className="h-4 w-4" />
+      case '/dashboard/settings':
+        return <Settings className="h-4 w-4" />
+      case '/dashboard/updates':
+        return <MessageCircle className="h-4 w-4" />
+      case '/donate':
+        return <DollarSign className="h-4 w-4" />
+      case '/dashboard':
+        return <Navigation className="h-4 w-4" />
+      case 'theme-toggle':
+        return <Settings className="h-4 w-4" />
+      default:
+        return <Navigation className="h-4 w-4" />
+    }
   }
 
   // Don't render anything if chatbot is disabled
@@ -202,15 +267,38 @@ export function ChatBot({ className }: ChatBotProps) {
                       </div>
                     )}
                     
-                    <div
-                      className={cn(
-                        "max-w-[85%] rounded-lg px-4 py-3 text-sm leading-relaxed",
-                        message.role === 'user'
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'bg-muted text-foreground shadow-sm'
+                    <div className="max-w-[85%] space-y-3">
+                      <div
+                        className={cn(
+                          "rounded-lg px-4 py-3 text-sm leading-relaxed",
+                          message.role === 'user'
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'bg-muted text-foreground shadow-sm'
+                        )}
+                      >
+                        {message.content}
+                      </div>
+                      
+                      {/* Quick Actions for Assistant Messages */}
+                      {message.role === 'assistant' && message.quickActions && message.quickActions.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-xs text-muted-foreground font-medium">Quick Actions:</div>
+                          <div className="flex flex-wrap gap-2">
+                            {message.quickActions.map((action, index) => (
+                              <Button
+                                key={index}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleQuickAction(action)}
+                                className="h-8 text-xs px-3 py-1 bg-background hover:bg-primary/10 border-primary/20"
+                              >
+                                {getActionIcon(action)}
+                                <span className="ml-1">{action.label}</span>
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
                       )}
-                    >
-                      {message.content}
                     </div>
 
                     {message.role === 'user' && (
@@ -244,13 +332,65 @@ export function ChatBot({ className }: ChatBotProps) {
 
             {/* Input Area - Fixed at bottom */}
             <div className="absolute bottom-0 left-0 right-0 p-4 border-t-2 border-primary/20 bg-background">
+              {/* Quick Action Buttons */}
+              <div className="mb-3">
+                <div className="text-xs text-muted-foreground font-medium mb-2">Quick Actions:</div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleQuickAction({ type: 'navigate', target: '/dashboard/calendar', label: 'Calendar', description: 'Open calendar' })}
+                    className="h-7 text-xs px-2 py-1"
+                  >
+                    <Calendar className="h-3 w-3 mr-1" />
+                    Calendar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleQuickAction({ type: 'navigate', target: '/dashboard/updates', label: 'Updates', description: 'Share update' })}
+                    className="h-7 text-xs px-2 py-1"
+                  >
+                    <MessageCircle className="h-3 w-3 mr-1" />
+                    Updates
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleQuickAction({ type: 'navigate', target: '/dashboard/members', label: 'Superstars', description: 'Manage circle' })}
+                    className="h-7 text-xs px-2 py-1"
+                  >
+                    <Users className="h-3 w-3 mr-1" />
+                    Superstars
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleQuickAction({ type: 'navigate', target: '/dashboard/settings', label: 'Settings', description: 'Open settings' })}
+                    className="h-7 text-xs px-2 py-1"
+                  >
+                    <Settings className="h-3 w-3 mr-1" />
+                    Settings
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleQuickAction({ type: 'action', target: 'theme-toggle', label: 'Toggle Theme', description: 'Switch dark/light mode' })}
+                    className="h-7 text-xs px-2 py-1"
+                  >
+                    <Settings className="h-3 w-3 mr-1" />
+                    {theme === 'dark' ? 'Light' : 'Dark'}
+                  </Button>
+                </div>
+              </div>
+              
               <div className="flex gap-3 items-center">
                 <Input
                   ref={inputRef}
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Type your message here..."
+                  placeholder="Ask me anything about CareCircle..."
                   className="flex-1 h-12 text-base"
                   disabled={isLoading}
                 />

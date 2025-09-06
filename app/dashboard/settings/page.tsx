@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -12,7 +12,6 @@ import { getSession, logout } from '@/lib/session'
 import { getRoot, updateRoot } from '@/lib/localStore'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
-import { TourTrigger } from '@/components/tour/tour-trigger'
 import Link from 'next/link'
 import { ChatBotToggle } from '@/components/chatbot'
 import { AvatarSelector } from '@/components/avatar-selector'
@@ -25,9 +24,23 @@ export default function SettingsPage() {
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [selectedColorScheme, setSelectedColorScheme] = useState('emerald') // Default to current green
+  const [selectedColorScheme, setSelectedColorScheme] = useState('forest-serenity') // Default to green
   const router = useRouter()
   const { theme, setTheme } = useTheme()
+
+  const applyColorScheme = useCallback((scheme: string) => {
+    localStorage.setItem('carecircle-color-scheme', scheme)
+    
+    // Dispatch custom event to notify other components
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('carecircle-color-change'))
+    }
+  }, [])
+
+  const handleColorSchemeChange = (scheme: string) => {
+    setSelectedColorScheme(scheme)
+    applyColorScheme(scheme)
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -47,18 +60,6 @@ export default function SettingsPage() {
     setSelectedColorScheme(savedScheme)
   }, [])
 
-  const applyColorScheme = (scheme: string) => {
-    localStorage.setItem('carecircle-color-scheme', scheme)
-    // Force a re-render of the ThemeApplier by triggering a small delay
-    setTimeout(() => {
-      window.dispatchEvent(new Event('storage'))
-    }, 0)
-  }
-
-  const handleColorSchemeChange = (scheme: string) => {
-    setSelectedColorScheme(scheme)
-    applyColorScheme(scheme)
-  }
 
   // Handle dark mode changes - let next-themes handle this
   const handleDarkModeChange = (isDark: boolean) => {
@@ -67,6 +68,32 @@ export default function SettingsPage() {
 
   if (!session.user || !session.group || !mounted) {
     return <div>Loading...</div>
+  }
+
+  // Get user's role in this group
+  const userMembership = root.members.find(
+    m => m.groupId === session.group!.id && m.userId === session.user!.id && m.status === 'ACTIVE'
+  )
+  const userRole = userMembership?.role || 'CAREGIVER'
+  const isPatient = userRole === 'PATIENT'
+  const isCaregiver = userRole === 'CAREGIVER'
+
+  const handleLeaveCircle = () => {
+    if (confirm('Are you sure you want to leave this care circle? This action cannot be undone.')) {
+      // Remove user from the group
+      updateRoot(prev => ({
+        ...prev,
+        members: prev.members.map(m => 
+          m.userId === session.user!.id && m.groupId === session.group!.id
+            ? { ...m, status: 'REMOVED' }
+            : m
+        )
+      }))
+      
+      // Clear session and redirect to portal
+      logout()
+      router.push('/portal')
+    }
   }
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -117,14 +144,12 @@ export default function SettingsPage() {
 
   const getRoleDescription = (role: string) => {
     switch (role) {
-      case 'WARRIOR':
-        return 'You are the warrior and have full control over the circle'
-      case 'ADMIN':
-        return 'You can manage superstars and moderate the circle'
-      case 'MEMBER':
-        return 'You can view and participate in the circle'
+      case 'PATIENT':
+        return 'You are the patient and have full control over the circle'
+      case 'CAREGIVER':
+        return 'You can view and participate in the circle as a caregiver'
       default:
-        return 'Standard superstar permissions'
+        return 'Standard caregiver permissions'
     }
   }
 
@@ -141,7 +166,6 @@ export default function SettingsPage() {
           <Button variant="outline" size="sm" asChild>
             <Link href="/dashboard">← Back to Dashboard</Link>
           </Button>
-          <TourTrigger page="settings" variant="outline" size="sm" />
         </div>
       </div>
 
@@ -219,7 +243,7 @@ export default function SettingsPage() {
             </div>
             <Switch
               id="dark-mode"
-              checked={theme === 'dark'}
+              checked={mounted && theme === 'dark'}
               onCheckedChange={(checked) => {
                 setTheme(checked ? 'dark' : 'light')
                 handleDarkModeChange(checked)
@@ -228,7 +252,7 @@ export default function SettingsPage() {
           </div>
           
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {theme === 'dark' ? (
+            {mounted && theme === 'dark' ? (
               <>
                 <Moon className="h-4 w-4" />
                 <span>Dark mode is enabled</span>
@@ -552,7 +576,22 @@ export default function SettingsPage() {
             Irreversible actions
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {isCaregiver && (
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Leave Circle</Label>
+                <p className="text-sm text-muted-foreground">
+                  Remove yourself from this care circle
+                </p>
+              </div>
+              <Button variant="destructive" onClick={handleLeaveCircle}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Leave Circle
+              </Button>
+            </div>
+          )}
+          
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label>Sign Out</Label>

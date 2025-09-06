@@ -40,6 +40,46 @@
   --sidebar-ring: oklch(0.55 0.18 142 / 0.3);
 }
 
+/* Forest Serenity Theme (Green) - Explicit data-theme version */
+[data-theme="forest-serenity"],
+html[data-theme="forest-serenity"],
+body[data-theme="forest-serenity"] {
+  /* Default color palette (Forest Serenity - Green) */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.3 0 0);
+  --card: oklch(0.98 0.02 142);
+  --card-foreground: oklch(0.3 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.3 0 0);
+  --primary: oklch(0.55 0.18 142);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.7 0.12 142);
+  --secondary-foreground: oklch(0.3 0 0);
+  --muted: oklch(0.97 0.01 142);
+  --muted-foreground: oklch(0.5 0 0);
+  --accent: oklch(0.7 0.12 142);
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.55 0.2 25);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.9 0.01 142);
+  --input: oklch(0.97 0.01 142);
+  --ring: oklch(0.55 0.18 142 / 0.3);
+  --chart-1: oklch(0.65 0.18 142);
+  --chart-2: oklch(0.6 0.15 142);
+  --chart-3: oklch(0.55 0.18 142);
+  --chart-4: oklch(0.7 0.18 142);
+  --chart-5: oklch(0.6 0.2 142);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.98 0.02 142);
+  --sidebar-foreground: oklch(0.3 0 0);
+  --sidebar-primary: oklch(0.55 0.18 142);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.7 0.12 142);
+  --sidebar-accent-foreground: oklch(0.3 0 0);
+  --sidebar-border: oklch(0.9 0.01 142);
+  --sidebar-ring: oklch(0.55 0.18 142 / 0.3);
+}
+
 /* Warm Sunset Theme (Orange) */
 [data-theme="warm-sunset"],
 html[data-theme="warm-sunset"],

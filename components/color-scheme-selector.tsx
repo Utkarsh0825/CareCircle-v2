@@ -43,11 +43,9 @@ export function ColorSchemeSelector() {
         htmlElement.removeAttribute('data-theme')
         bodyElement.removeAttribute('data-theme')
         
-        // Set the data-theme attribute only if not default
-        if (schemeId !== 'forest-serenity') {
-          htmlElement.setAttribute('data-theme', schemeId)
-          bodyElement.setAttribute('data-theme', schemeId)
-        }
+        // Always set the data-theme attribute for all color schemes
+        htmlElement.setAttribute('data-theme', schemeId)
+        bodyElement.setAttribute('data-theme', schemeId)
         
         // Maintain dark mode state
         if (isDark) {

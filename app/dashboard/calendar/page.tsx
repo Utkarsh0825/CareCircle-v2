@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,12 +10,12 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Calendar, CalendarDays, Clock, MapPin, Users, Plus, Download, HelpCircle } from 'lucide-react'
+import { Calendar, CalendarDays, Clock, MapPin, Users, Plus, Download, HelpCircle, AlertTriangle } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { getSession } from '@/lib/session'
-import { getRoot, updateRoot } from '@/lib/localStore'
+import { getRoot, updateRoot, getTasksForDate, migrateToRecurringTasks } from '@/lib/localStore'
 import { makeIcs, downloadIcs } from '@/lib/ics'
 import { format, addDays, addWeeks, addMonths, addYears, subDays, subWeeks, subMonths, subYears, isSameDay, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, isToday, isSameMonth, isSameYear } from 'date-fns'
-import { TourTrigger } from '@/components/tour/tour-trigger'
 import Link from 'next/link'
 
 const TASK_CATEGORIES = [
@@ -26,8 +27,9 @@ export default function CalendarPage() {
   const [root, setRoot] = useState(getRoot())
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [showNewTaskDialog, setShowNewTaskDialog] = useState(false)
-  const [calendarView, setCalendarView] = useState<'week' | 'month' | 'year'>('month')
+  const [calendarView, setCalendarView] = useState<'week' | 'month' | 'year'>('week')
   const [currentDate, setCurrentDate] = useState(new Date())
+  const searchParams = useSearchParams()
   const [newTask, setNewTask] = useState({
     title: '',
     category: 'meal',
@@ -40,13 +42,37 @@ export default function CalendarPage() {
   })
 
   useEffect(() => {
+    // Migrate to recurring tasks if needed
+    migrateToRecurringTasks()
+    
     setSession(getSession())
     setRoot(getRoot())
-  }, [])
+    
+    // Handle URL parameters for filtering
+    const filter = searchParams.get('filter')
+    const date = searchParams.get('date')
+    
+    if (filter === 'unclaimed' && date) {
+      setSelectedDate(date)
+      setCurrentDate(new Date(date))
+    }
+  }, [searchParams])
 
   if (!session.user || !session.group) {
     return <div>Loading...</div>
   }
+
+  // Get user's role in this group
+  const userMembership = root.members.find(
+    m => m.groupId === session.group!.id && m.userId === session.user!.id && m.status === 'ACTIVE'
+  )
+  const userRole = userMembership?.role || 'CAREGIVER'
+  const isPatient = userRole === 'PATIENT'
+  const canCreateTasks = isPatient
+
+  // Check if we're filtering for unclaimed tasks (from bad day alert)
+  const isFilteringUnclaimed = searchParams.get('filter') === 'unclaimed'
+  const filterDate = searchParams.get('date')
 
   const tasks = root.tasks
     .filter(t => t.groupId === session.group!.id)
@@ -54,9 +80,12 @@ export default function CalendarPage() {
 
   const tasksForSelectedDate = tasks.filter(t => t.taskDate === selectedDate)
   
-  // Get today's tasks
+  // Get tasks for selected date (including recurring daily tasks)
+  const selectedDateTasks = session.group ? getTasksForDate(session.group.id, selectedDate) : []
+  
+  // Get today's tasks (for reference)
   const today = new Date().toISOString().split('T')[0]
-  const todaysTasks = tasks.filter(t => t.taskDate === today)
+  const todaysTasks = session.group ? getTasksForDate(session.group.id, today) : []
   
   // Get upcoming tasks (next 7 days and beyond)
   const upcomingTasks = tasks.filter(t => {
@@ -259,14 +288,14 @@ const getCategoryIcon = (category: string) => {
           <Button variant="outline" size="sm" asChild>
             <Link href="/dashboard">← Back to Dashboard</Link>
           </Button>
-          <TourTrigger page="calendar" variant="outline" size="sm" />
-          <Dialog open={showNewTaskDialog} onOpenChange={setShowNewTaskDialog}>
-            <DialogTrigger asChild>
-              <Button id="create-task-button">
-                <Plus className="h-4 w-4 mr-2" />
-                New Task
-              </Button>
-            </DialogTrigger>
+          {canCreateTasks && (
+            <Dialog open={showNewTaskDialog} onOpenChange={setShowNewTaskDialog}>
+              <DialogTrigger asChild>
+                <Button id="create-task-button">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Task
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>Create New Task</DialogTitle>
@@ -372,8 +401,37 @@ const getCategoryIcon = (category: string) => {
               </form>
             </DialogContent>
           </Dialog>
+          )}
         </div>
       </div>
+
+      {/* Caregiver Info */}
+      {!canCreateTasks && (
+        <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <Calendar className="h-5 w-5 text-blue-600" />
+            <div>
+                <h3 className="font-medium text-blue-900 dark:text-blue-100">Viewing Tasks</h3>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  As a Caregiver, you can view and claim available tasks. Only patients can create new tasks.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Bad Day Alert Banner */}
+      {isFilteringUnclaimed && (
+        <Alert className="border-orange-200 bg-orange-50">
+          <AlertTriangle className="h-4 w-4 text-orange-600" />
+          <AlertDescription className="text-orange-800">
+            <strong>Bad Day Alert:</strong> Someone in your circle is having a difficult day and could use extra support. 
+            Please check the unclaimed tasks below and consider helping out.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Calendar Navigation */}
       <Card id="calendar-navigation">
@@ -396,7 +454,7 @@ const getCategoryIcon = (category: string) => {
               </Select>
               <Button variant="outline" size="sm" onClick={goToToday}>
                 Today
-              </Button>
+            </Button>
             </div>
           </div>
             </CardHeader>
@@ -428,7 +486,8 @@ const getCategoryIcon = (category: string) => {
                 {generateCalendarDays().map(date => {
                   const dateStr = date.toISOString().split('T')[0]
                   const isSelected = dateStr === selectedDate
-                  const hasTasks = tasks.some(t => t.taskDate === dateStr)
+                  const tasksForThisDate = session.group ? getTasksForDate(session.group.id, dateStr) : []
+                  const hasTasks = tasksForThisDate.length > 0
                   const isCurrentDay = isToday(date)
                   
                   return (
@@ -443,7 +502,9 @@ const getCategoryIcon = (category: string) => {
                     >
                       <div className="text-sm font-semibold">{format(date, 'd')}</div>
                       {hasTasks && (
-                        <div className="text-xs text-primary">●</div>
+                        <div className="text-xs text-primary">
+                          {tasksForThisDate.length > 3 ? '3+' : '●'.repeat(tasksForThisDate.length)}
+                        </div>
                       )}
                     </Button>
                   )
@@ -464,7 +525,8 @@ const getCategoryIcon = (category: string) => {
                   {generateCalendarDays().map(date => {
                     const dateStr = date.toISOString().split('T')[0]
                     const isSelected = dateStr === selectedDate
-                    const hasTasks = tasks.some(t => t.taskDate === dateStr)
+                    const tasksForThisDate = session.group ? getTasksForDate(session.group.id, dateStr) : []
+                    const hasTasks = tasksForThisDate.length > 0
                     const isCurrentDay = isToday(date)
                     const isCurrentMonth = isSameMonth(date, currentDate)
                     
@@ -480,7 +542,9 @@ const getCategoryIcon = (category: string) => {
                       >
                         <div className="text-sm font-semibold">{format(date, 'd')}</div>
                         {hasTasks && (
-                          <div className="text-xs text-primary">●</div>
+                          <div className="text-xs text-primary">
+                            {tasksForThisDate.length > 3 ? '3+' : '●'.repeat(tasksForThisDate.length)}
+                          </div>
                         )}
                       </Button>
                     )
@@ -522,35 +586,37 @@ const getCategoryIcon = (category: string) => {
 
             {/* Tasks Overview - 2 Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Today's Tasks */}
+        {/* Selected Date Tasks */}
         <Card id="todays-tasks">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CalendarDays className="h-5 w-5" />
-              Today's Tasks
+              {selectedDate === today ? "Today's Tasks" : "Tasks for Selected Date"}
             </CardTitle>
             <CardDescription>
-              {todaysTasks.length} task{todaysTasks.length !== 1 ? 's' : ''} for {format(new Date(), 'EEEE, MMMM d')}
+              {selectedDateTasks.length} task{selectedDateTasks.length !== 1 ? 's' : ''} for {format(new Date(selectedDate), 'EEEE, MMMM d')}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {todaysTasks.length === 0 ? (
+            {selectedDateTasks.length === 0 ? (
               <div className="text-center py-8">
                 <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">No tasks today</h3>
+                <h3 className="text-lg font-medium mb-2">
+                  {selectedDate === today ? "No tasks today" : "No tasks for this date"}
+                  </h3>
                 <p className="text-muted-foreground">
-                  You're all caught up! 🎉
+                  {selectedDate === today ? "You're all caught up! 🎉" : "Select another date to view tasks"}
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
-                {todaysTasks.map(task => {
+                {selectedDateTasks.map(task => {
                   const claimedSlots = root.signups.filter(s => s.taskId === task.id && s.status === 'CLAIMED').length
                   const availableSlots = task.slots - claimedSlots
                   const isClaimed = isTaskClaimed(task.id)
 
                   return (
-                    <Card key={task.id} className="border-border/50">
+                      <Card key={task.id} className="border-border/50">
                       <CardHeader className="pb-3">
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-2">
@@ -561,25 +627,30 @@ const getCategoryIcon = (category: string) => {
                                 <Badge variant={availableSlots > 0 ? 'default' : 'secondary'}>
                                   {claimedSlots}/{task.slots} claimed
                                 </Badge>
+                                {task.isRecurring && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Daily
+                                  </Badge>
+                                )}
                               </CardDescription>
                             </div>
                           </div>
-                        </div>
+                              </div>
 
                         <div className="grid grid-cols-2 gap-4 mb-3 text-sm">
                           {task.startTime && (
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-4 w-4" />
                               <span>{task.startTime}{task.endTime ? ` - ${task.endTime}` : ''}</span>
-                            </div>
+                                </div>
                           )}
                           {task.location && (
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-4 w-4" />
+                                <div className="flex items-center gap-1">
+                                  <MapPin className="h-4 w-4" />
                               <span>{task.location}</span>
-                            </div>
+                                </div>
                           )}
-                        </div>
+                              </div>
 
                         {task.details && (
                           <p className="text-sm text-muted-foreground">{task.details}</p>
@@ -636,7 +707,7 @@ const getCategoryIcon = (category: string) => {
                                 Claim Task
                               </Button>
                             )}
-                          </div>
+                                  </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -666,8 +737,8 @@ const getCategoryIcon = (category: string) => {
                 <p className="text-muted-foreground">
                   Create some tasks to get started!
                 </p>
-              </div>
-            ) : (
+                                </div>
+                              ) : (
               <div className="space-y-4">
                 {upcomingTasks.slice(0, 5).map(task => {
                   const claimedSlots = root.signups.filter(s => s.taskId === task.id && s.status === 'CLAIMED').length
@@ -680,7 +751,7 @@ const getCategoryIcon = (category: string) => {
                     <Card key={task.id} className="border-border/50">
                       <CardHeader className="pb-3">
                         <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2">
                             <span className="text-2xl">{getCategoryIcon(task.category)}</span>
                             <div>
                               <CardTitle className="text-lg">{task.title}</CardTitle>
@@ -690,7 +761,7 @@ const getCategoryIcon = (category: string) => {
                                 </Badge>
                                 <Badge variant="outline" className="text-xs">
                                   {daysUntil === 1 ? 'Tomorrow' : `${daysUntil} days`}
-                                </Badge>
+                                  </Badge>
                               </CardDescription>
                             </div>
                           </div>
@@ -705,9 +776,9 @@ const getCategoryIcon = (category: string) => {
                             <div className="flex items-center gap-1">
                               <Clock className="h-4 w-4" />
                               <span>{task.startTime}{task.endTime ? ` - ${task.endTime}` : ''}</span>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
 
                         {task.location && (
                           <div className="flex items-center gap-1 text-sm mb-2">
@@ -770,10 +841,10 @@ const getCategoryIcon = (category: string) => {
                                 Claim Task
                               </Button>
                             )}
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
                   )
                 })}
                 {upcomingTasks.length > 5 && (
@@ -783,10 +854,10 @@ const getCategoryIcon = (category: string) => {
                     </p>
                   </div>
                 )}
-              </div>
+                </div>
             )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
       </div>
     </div>
   )

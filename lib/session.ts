@@ -3,7 +3,7 @@ import { getRoot, updateRoot, User, Group, GroupMember } from './localStore'
 export interface Session {
   user: User | null
   group: Group | null
-  role: 'WARRIOR' | 'MEMBER' | 'ADMIN' | null
+  role: 'PATIENT' | 'CAREGIVER' | null
 }
 
 export interface PersistentSession {
@@ -18,15 +18,25 @@ export function getSession(): Session {
   const root = getRoot()
   const { userId, groupId } = root.session || {}
   
-  if (!userId || !groupId) {
+  if (!userId) {
     return { user: null, group: null, role: null }
   }
 
   const user = root.users[userId] || null
+  
+  if (!user) {
+    return { user: null, group: null, role: null }
+  }
+
+  // If no groupId, return user without group (for signin flow)
+  if (!groupId) {
+    return { user, group: null, role: null }
+  }
+
   const group = root.groups[groupId] || null
   
-  if (!user || !group) {
-    return { user: null, group: null, role: null }
+  if (!group) {
+    return { user, group: null, role: null }
   }
 
   const member = root.members.find(
@@ -213,7 +223,7 @@ export function getUserGroups(userId: string): Group[] {
   return userMemberships.map(membership => root.groups[membership.groupId]).filter(Boolean)
 }
 
-export function addMemberToGroup(userId: string, groupId: string, role: 'WARRIOR' | 'MEMBER' | 'ADMIN' = 'MEMBER'): void {
+export function addMemberToGroup(userId: string, groupId: string, role: 'PATIENT' | 'CAREGIVER' | 'ADMIN' = 'CAREGIVER'): void {
   const root = getRoot()
   
   // Check if membership already exists
@@ -259,7 +269,7 @@ export function removeMemberFromGroup(userId: string, groupId: string): void {
   }))
 }
 
-export function updateMemberRole(userId: string, groupId: string, role: 'WARRIOR' | 'MEMBER' | 'ADMIN'): void {
+export function updateMemberRole(userId: string, groupId: string, role: 'PATIENT' | 'CAREGIVER' | 'ADMIN'): void {
   updateRoot(prev => ({
     ...prev,
     members: prev.members.map(m => 

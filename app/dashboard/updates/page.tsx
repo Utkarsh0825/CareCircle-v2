@@ -10,11 +10,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { MessageCircle, Smile, Meh, Frown, AlertTriangle, HelpCircle, Calendar, Target, TrendingUp, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { MessageCircle, Smile, Meh, Frown, AlertTriangle, HelpCircle, Calendar, Target, Clock, CheckCircle, XCircle, TrendingUp } from 'lucide-react'
+import { GroupChat } from '@/components/group-chat'
 import { getSession } from '@/lib/session'
 import { getRoot, updateRoot } from '@/lib/localStore'
 import { format, addDays, addWeeks, addMonths, addYears, subDays, subWeeks, subMonths, subYears, differenceInDays, differenceInWeeks, differenceInMonths, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, isSameDay, isSameMonth, isSameYear, isToday } from 'date-fns'
-import { TourTrigger } from '@/components/tour/tour-trigger'
 
 export default function UpdatesPage() {
   const [session, setSession] = useState(getSession())
@@ -37,6 +37,9 @@ export default function UpdatesPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [scheduledDates, setScheduledDates] = useState<string[]>([])
+  
+  // Tab State
+  const [activeTab, setActiveTab] = useState<'chat' | 'chemo'>('chat')
 
   useEffect(() => {
     setSession(getSession())
@@ -46,6 +49,14 @@ export default function UpdatesPage() {
   if (!session.user || !session.group) {
     return <div>Loading...</div>
   }
+
+  // Get user's role in this group
+  const userMembership = root.members.find(
+    m => m.groupId === session.group!.id && m.userId === session.user!.id && m.status === 'ACTIVE'
+  )
+  const userRole = userMembership?.role || 'CAREGIVER'
+  const isPatient = userRole === 'PATIENT'
+  const canPostUpdates = isPatient
 
   const updates = root.updates
     .filter(u => u.groupId === session.group!.id)
@@ -126,8 +137,8 @@ export default function UpdatesPage() {
     }
   }
 
-  const getMoodIcon = (mood: string) => {
-    switch (mood) {
+const getMoodIcon = (mood: string) => {
+  switch (mood) {
       case 'GOOD': return <Smile className="h-4 w-4" />
       case 'OKAY': return <Meh className="h-4 w-4" />
       case 'BAD': return <Frown className="h-4 w-4" />
@@ -136,7 +147,7 @@ export default function UpdatesPage() {
   }
 
   const getMoodVariant = (mood: string) => {
-    switch (mood) {
+  switch (mood) {
       case 'GOOD': return 'default'
       case 'OKAY': return 'secondary'
       case 'BAD': return 'destructive'
@@ -208,7 +219,7 @@ export default function UpdatesPage() {
         const yearEnd = endOfYear(currentDate)
         return eachMonthOfInterval({ start: yearStart, end: yearEnd })
       
-      default:
+    default:
         return []
     }
   }
@@ -285,10 +296,39 @@ export default function UpdatesPage() {
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" asChild>
                       <Link href="/dashboard">← Back to Dashboard</Link>
-                    </Button>
-                    <TourTrigger page="updates" variant="outline" size="sm" />
+          </Button>
                   </div>
                 </div>
+
+      {/* Tab Switcher */}
+      <div className="flex justify-center mb-6">
+        <div className="inline-flex bg-background/50 backdrop-blur-sm border border-border/50 rounded-lg p-1 shadow-sm">
+          <button
+            onClick={() => setActiveTab('chat')}
+            className={`
+              px-6 py-2 rounded-md text-sm font-medium transition-all duration-200
+              ${activeTab === 'chat' 
+                ? 'bg-primary text-primary-foreground shadow-sm' 
+                : 'text-muted-foreground hover:text-foreground hover:bg-background/80'
+              }
+            `}
+          >
+            Chat Update
+          </button>
+          <button
+            onClick={() => setActiveTab('chemo')}
+            className={`
+              px-6 py-2 rounded-md text-sm font-medium transition-all duration-200
+              ${activeTab === 'chemo' 
+                ? 'bg-primary text-primary-foreground shadow-sm' 
+                : 'text-muted-foreground hover:text-foreground hover:bg-background/80'
+              }
+            `}
+          >
+            Chemo Update
+          </button>
+        </div>
+      </div>
 
       {showAlert && (
         <Alert id="bad-day-info">
@@ -299,8 +339,11 @@ export default function UpdatesPage() {
         </Alert>
       )}
 
-      {/* Calendar Navigation */}
-      <Card id="calendar-navigation">
+      {/* Chemo Update Tab Content */}
+      {activeTab === 'chemo' && (
+        <>
+          {/* Calendar Navigation */}
+          <Card id="calendar-navigation">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
@@ -313,7 +356,7 @@ export default function UpdatesPage() {
         <CardContent>
           {/* View Selector */}
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
               <Label htmlFor="view-selector" className="text-sm font-medium">View:</Label>
               <select
                 id="view-selector"
@@ -446,7 +489,7 @@ export default function UpdatesPage() {
                     <span className={`px-2 py-1 rounded text-xs font-medium ${chemoPhase.color}`}>
                       {chemoPhase.phase}
                     </span>
-                  </div>
+        </div>
                 )
               })()}
               
@@ -522,10 +565,10 @@ export default function UpdatesPage() {
               </Button>
             </div>
           ) : (
-            <div className="space-y-6">
+        <div className="space-y-6">
               {/* Overall Progress */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Overall Progress</span>
                   <span className="text-sm text-muted-foreground">
                     {chemoProgress?.completedCycles} of {totalCycles} cycles
@@ -557,9 +600,9 @@ export default function UpdatesPage() {
                       </div>
                       <div className="text-sm text-muted-foreground">
                         Day {chemoProgress.currentCycleDay} of {chemoCycleLength}
-                      </div>
-                    </CardContent>
-                  </Card>
+              </div>
+            </CardContent>
+          </Card>
 
                   <Card className={`border-2 ${getCyclePhase(chemoProgress.currentCycleDay).border}`}>
                     <CardContent className={`p-4 ${getCyclePhase(chemoProgress.currentCycleDay).bg}`}>
@@ -569,7 +612,7 @@ export default function UpdatesPage() {
                       </div>
                       <div className={`text-lg font-bold ${getCyclePhase(chemoProgress.currentCycleDay).color}`}>
                         {getCyclePhase(chemoProgress.currentCycleDay).phase}
-                      </div>
+                        </div>
                       <div className="text-sm text-muted-foreground">
                         {chemoProgress.isOnTreatmentDay && 'Rest and take care'}
                         {chemoProgress.isRecoveryWeek && 'Focus on recovery'}
@@ -593,7 +636,7 @@ export default function UpdatesPage() {
                         {chemoProgress.completedCycles < totalCycles ? 
                           differenceInDays(chemoProgress.nextCycleDate, new Date()) : 0
                         }
-                      </div>
+                  </div>
                       <div className="text-sm text-muted-foreground">
                         {chemoProgress.completedCycles < totalCycles ? 
                           'days until next cycle' : 'Treatment complete! 🎉'
@@ -627,124 +670,6 @@ export default function UpdatesPage() {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Daily Symptom Tracker */}
-      <Card id="symptom-tracker">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Daily Symptom Tracker
-          </CardTitle>
-          <CardDescription>
-            Track common chemo side effects and symptoms daily
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { symptom: 'Nausea', icon: '🤢', severity: 0 },
-              { symptom: 'Fatigue', icon: '😴', severity: 0 },
-              { symptom: 'Pain', icon: '😣', severity: 0 },
-              { symptom: 'Appetite', icon: '🍽️', severity: 0 },
-              { symptom: 'Sleep', icon: '😴', severity: 0 },
-              { symptom: 'Mood', icon: '😊', severity: 0 },
-              { symptom: 'Energy', icon: '⚡', severity: 0 },
-              { symptom: 'Hair Loss', icon: '💇‍♀️', severity: 0 }
-            ].map((symptom) => (
-              <div key={symptom.symptom} className="text-center p-3 border rounded-lg hover:bg-muted/30 transition-colors">
-                <div className="text-2xl mb-2">{symptom.icon}</div>
-                <div className="text-sm font-medium mb-2">{symptom.symptom}</div>
-                <div className="flex gap-1 justify-center">
-                  {[1, 2, 3, 4, 5].map((level) => (
-                    <button
-                      key={level}
-                      className={`w-3 h-3 rounded-full border transition-colors ${
-                        level <= (symptom.severity || 0) 
-                          ? 'bg-red-500 border-red-500' 
-                          : 'bg-transparent border-gray-300'
-                      }`}
-                      onClick={() => {
-                        // In a real app, this would save to localStorage
-                        console.log(`${symptom.symptom} severity: ${level}`)
-                      }}
-                      title={`Severity ${level}`}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center gap-2 text-blue-800">
-              <HelpCircle className="h-4 w-4" />
-              <span className="text-sm font-medium">Tip:</span>
-            </div>
-            <p className="text-sm text-blue-700 mt-1">
-              Track symptoms daily to help your care team understand patterns and adjust treatment accordingly.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Post Update Form */}
-      <Card id="update-composer">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5" />
-            Share Your Update
-          </CardTitle>
-          <CardDescription>
-            Let your support circle know how you're doing today
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div id="mood-selection" className="space-y-2">
-              <Label>How are you feeling today?</Label>
-              <RadioGroup value={mood} onValueChange={(value: 'GOOD' | 'OKAY' | 'BAD') => setMood(value)}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="GOOD" id="good" />
-                  <Label htmlFor="good" className="flex items-center gap-2 cursor-pointer">
-                    <Smile className="h-4 w-4 text-green-600" />
-                    Good
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="OKAY" id="okay" />
-                  <Label htmlFor="okay" className="flex items-center gap-2 cursor-pointer">
-                    <Meh className="h-4 w-4 text-yellow-600" />
-                    Okay
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="BAD" id="bad" />
-                  <Label htmlFor="bad" className="flex items-center gap-2 cursor-pointer">
-                    <Frown className="h-4 w-4 text-red-600" />
-                    Bad
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="content">What would you like to share?</Label>
-              <Textarea
-                id="content"
-                placeholder="Share how you're feeling, what you need help with, or any updates..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                rows={4}
-                required
-              />
-            </div>
-
-            <Button type="submit" disabled={isSubmitting || !content.trim()}>
-              {isSubmitting ? 'Posting...' : 'Post Update'}
-            </Button>
-          </form>
         </CardContent>
       </Card>
 
@@ -807,59 +732,93 @@ export default function UpdatesPage() {
           </div>
         </CardContent>
       </Card>
+        </>
+      )}
 
-      {/* Updates Feed */}
-      <Card id="update-history">
+      {/* Chat Update Tab Content */}
+      {activeTab === 'chat' && (
+        <>
+          {/* Post Update Form - Only for Patients */}
+      {canPostUpdates && (
+      <Card id="update-composer">
         <CardHeader>
-          <CardTitle>Recent Updates</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <MessageCircle className="h-5 w-5" />
+            Share Your Update
+          </CardTitle>
           <CardDescription>
-            Latest posts from your support circle
+            Let your support circle know how you're doing today
           </CardDescription>
-        </CardHeader>
+                </CardHeader>
         <CardContent>
-          {updates.length === 0 ? (
-            <div className="text-center py-8">
-              <MessageCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">No updates yet</h3>
-              <p className="text-muted-foreground">
-                Be the first to share how you're doing today.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {updates.map((update) => {
-                const author = root.users[update.authorId!]
-                return (
-                  <div key={update.id} className="flex gap-3 p-4 bg-muted/30 rounded-lg">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback>
-                        {author?.name?.split(' ').map(n => n[0]).join('') || author?.email[0].toUpperCase() || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium">
-                          {author?.name || author?.email || 'Unknown'}
-                        </span>
-                        <Badge variant={getMoodVariant(update.mood)} className="flex items-center gap-1">
-                          {getMoodIcon(update.mood)}
-                          {update.mood}
-                        </Badge>
-                        <span className="text-sm text-muted-foreground">
-                          {format(new Date(update.createdAt), 'MMM d, h:mm a')}
-                        </span>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div id="mood-selection" className="space-y-2">
+              <Label>How are you feeling today?</Label>
+              <RadioGroup value={mood} onValueChange={(value: 'GOOD' | 'OKAY' | 'BAD') => setMood(value)}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="GOOD" id="good" />
+                  <Label htmlFor="good" className="flex items-center gap-2 cursor-pointer">
+                    <Smile className="h-4 w-4 text-green-600" />
+                    Good
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="OKAY" id="okay" />
+                  <Label htmlFor="okay" className="flex items-center gap-2 cursor-pointer">
+                    <Meh className="h-4 w-4 text-yellow-600" />
+                    Okay
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="BAD" id="bad" />
+                  <Label htmlFor="bad" className="flex items-center gap-2 cursor-pointer">
+                    <Frown className="h-4 w-4 text-red-600" />
+                    Bad
+                  </Label>
+                </div>
+              </RadioGroup>
                       </div>
-                      <p className="text-sm text-foreground">
-                        {update.content}
-                      </p>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+
+            <div className="space-y-2">
+              <Label htmlFor="content">What would you like to share?</Label>
+              <Textarea
+                id="content"
+                placeholder="Share how you're feeling, what you need help with, or any updates..."
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                rows={4}
+                required
+              />
+                            </div>
+
+            <Button type="submit" disabled={isSubmitting || !content.trim()}>
+              {isSubmitting ? 'Posting...' : 'Post Update'}
+            </Button>
+          </form>
         </CardContent>
       </Card>
+      )}
+
+      {/* Caregiver Info */}
+      {!canPostUpdates && (
+        <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <MessageCircle className="h-5 w-5 text-blue-600" />
+              <div>
+                <h3 className="font-medium text-blue-900 dark:text-blue-100">Reading Updates</h3>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  As a Caregiver, you can read updates from the patient. Only patients can post updates about their mood and progress.
+                </p>
+                          </div>
+                        </div>
+          </CardContent>
+        </Card>
+      )}
+
+
+          {/* Group Chat */}
+          <GroupChat groupId={session.group.id} />
 
       {/* Chemo Scheduling Modal */}
       {showScheduleModal && selectedDate && (
@@ -901,8 +860,8 @@ export default function UpdatesPage() {
                   placeholder="Any special instructions or notes..."
                   rows={3}
                 />
-              </div>
-              
+          </div>
+
               <div className="flex gap-2 justify-end">
                 <Button
                   variant="outline"
@@ -918,11 +877,13 @@ export default function UpdatesPage() {
                   }}
                 >
                   Schedule Treatment
-                </Button>
-              </div>
-            </div>
+            </Button>
           </div>
         </div>
+      </div>
+        </div>
+      )}
+        </>
       )}
     </div>
   )

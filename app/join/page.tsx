@@ -11,7 +11,6 @@ import Link from 'next/link'
 import { getRoot, updateRoot } from '@/lib/localStore'
 import { login, addMemberToGroup, selectGroup } from '@/lib/session'
 import { useTheme } from 'next-themes'
-import { TourTrigger } from '@/components/tour/tour-trigger'
 
 export default function JoinPage() {
   const [inviteCode, setInviteCode] = useState('')
@@ -40,8 +39,8 @@ export default function JoinPage() {
       return
     }
 
-    setStep('email')
-    setError('')
+    // Redirect to caregiver registration with the code
+    router.push(`/register-caregiver?code=${inviteCode}`)
   }
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -62,13 +61,13 @@ export default function JoinPage() {
       const user = login(email)
       
       // Add user to group
-      addMemberToGroup(user.id, group.id, 'MEMBER')
+      addMemberToGroup(user.id, group.id, 'CAREGIVER')
       
       // Select the group
       selectGroup(group.id)
       
-      // Redirect to dashboard
-      router.push('/dashboard')
+      // Redirect to portal for role-aware routing
+      router.push('/portal')
     } catch (err) {
       setError('Failed to join group. Please try again.')
     } finally {
@@ -102,13 +101,12 @@ export default function JoinPage() {
                       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                       className="ml-4"
                     >
-                      {theme === 'dark' ? (
+                      {mounted && theme === 'dark' ? (
                         <Sun className="h-4 w-4" />
                       ) : (
                         <Moon className="h-4 w-4" />
                       )}
                     </Button>
-                    <TourTrigger page="join" variant="ghost" size="sm" className="ml-2" />
                   </div>
 
         <Card className="border-border/50">
@@ -116,8 +114,8 @@ export default function JoinPage() {
             <CardTitle className="text-2xl">Join a Care Circle</CardTitle>
             <CardDescription>
               {step === 'code' 
-                ? 'Enter your invite code to join a support circle'
-                : 'Enter your email to complete joining'
+                ? 'Enter your invite code to join a support circle as a Caregiver'
+                : 'Enter your email to complete joining as a Caregiver'
               }
             </CardDescription>
           </CardHeader>
@@ -137,6 +135,9 @@ export default function JoinPage() {
                   />
                   <p className="text-xs text-muted-foreground">
                     Demo: Use <code className="bg-muted px-1 rounded">CARE-1234</code>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    As a Caregiver, you'll be able to claim tasks, read updates, and support the patient.
                   </p>
                 </div>
 

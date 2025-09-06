@@ -10,7 +10,8 @@ import { useEffect, useState } from "react"
 import { getSession } from "@/lib/session"
 import { getRoot } from "@/lib/localStore"
 import { format } from "date-fns"
-import { TourTrigger } from "@/components/tour/tour-trigger"
+import { DailySymptomTracker } from "@/components/daily-symptom-tracker"
+import { PatientSymptomsView } from "@/components/patient-symptoms-view"
 
 export default function DashboardPage() {
   const [session, setSession] = useState(getSession())
@@ -44,7 +45,6 @@ export default function DashboardPage() {
         .length
       return claimedSlots < task.slots
     })
-    .slice(0, 3)
 
   // Get recent gifts
   const recentGifts = root.donations
@@ -56,11 +56,19 @@ export default function DashboardPage() {
     .filter(d => d.groupId === session.group!.id)
     .reduce((sum, d) => sum + d.amountCents, 0)
 
-  // Get active superstars
-  const activeSuperstars = root.members
-    .filter(m => m.groupId === session.group!.id && m.status === 'ACTIVE')
-    .map(m => root.users[m.userId])
-    .filter(Boolean)
+
+  // Get user's role in this group
+  const userMembership = root.members.find(
+    m => m.groupId === session.group!.id && m.userId === session.user!.id && m.status === 'ACTIVE'
+  )
+  const userRole = userMembership?.role || 'CAREGIVER'
+  const isPatient = userRole === 'PATIENT'
+
+  // Find the patient in this group (for caregivers to view symptoms)
+  const patientMember = root.members.find(
+    m => m.groupId === session.group!.id && m.role === 'PATIENT' && m.status === 'ACTIVE'
+  )
+  const patient = patientMember ? root.users[patientMember.userId] : null
 
   return (
     <div className="space-y-6">
@@ -69,20 +77,43 @@ export default function DashboardPage() {
                   <div>
                     <h1 className="text-2xl font-bold mb-2">Welcome back, {session.user.name || session.user.email}</h1>
                     <p className="text-muted-foreground">
-                      Here's what's happening in your care circle today.
+                      {isPatient 
+                        ? "Here's what's happening in your care circle today. As a Patient, you can create tasks, post updates, and manage your support circle."
+                        : "Here's what's happening in your care circle today. As a Caregiver, you can claim tasks, read updates, and support the patient."
+                      }
                     </p>
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" asChild>
                       <Link href="/">← Back to Home</Link>
                     </Button>
-                    <TourTrigger page="dashboard-home" variant="outline" size="sm" />
                   </div>
                 </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Daily Symptom Tracker - Only for Patients */}
+          {isPatient && (
+            <DailySymptomTracker 
+              groupId={session.group.id}
+              userId={session.user.id}
+              onSave={(entry) => {
+                // Refresh data when symptoms are saved
+                setRoot(getRoot())
+              }}
+            />
+          )}
+
+          {/* Patient Symptoms View - Only for Caregivers */}
+          {!isPatient && patient && (
+            <PatientSymptomsView 
+              groupId={session.group.id}
+              patientUserId={patient.id}
+              patientName={patient.name || patient.email}
+            />
+          )}
+
           {/* Latest Update */}
           {latestUpdate && (
             <Card id="warrior-updates">
@@ -139,7 +170,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               {unclaimedTasks.length > 0 ? (
-                <div className="space-y-3">
+                <div className={`space-y-3 ${unclaimedTasks.length > 4 ? 'max-h-96 overflow-y-auto pr-2' : ''}`}>
                   {unclaimedTasks.map((task) => {
                     const claimedSlots = root.signups
                       .filter(s => s.taskId === task.id && s.status === 'CLAIMED')
@@ -213,9 +244,15 @@ export default function DashboardPage() {
                 </div>
               )}
               
-              <Button asChild className="w-full">
-                <Link href="/donate">Send a Gift</Link>
-              </Button>
+              {isPatient ? (
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/donate">View Gifts</Link>
+                </Button>
+              ) : (
+                <Button asChild className="w-full">
+                  <Link href="/donate">Send a Gift</Link>
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -230,7 +267,9 @@ export default function DashboardPage() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Superstars</span>
-                <span className="font-medium">{activeSuperstars.length}</span>
+                <span className="font-medium">
+                  {root.members.filter(m => m.groupId === session.group!.id && m.status === 'ACTIVE').length}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Updates</span>
@@ -239,70 +278,29 @@ export default function DashboardPage() {
                 </span>
               </div>
 
-              <div className="pt-2 border-t border-border">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Invite Code</span>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => {
-                      navigator.clipboard.writeText(session.group!.inviteCode)
-                    }}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
+              {isPatient && (
+                <div className="pt-2 border-t border-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Invite Code</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(session.group!.inviteCode)
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="bg-muted p-2 rounded text-center font-mono text-lg tracking-widest">
+                    {session.group.inviteCode}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Share this code with family and friends</p>
                 </div>
-                <div className="bg-muted p-2 rounded text-center font-mono text-lg tracking-widest">
-                  {session.group.inviteCode}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Share this code with family and friends</p>
-              </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Circle Superstars */}
-          <Card id="active-superstars">
-            <CardHeader>
-              <CardTitle>Circle Superstars</CardTitle>
-              <CardDescription>Your support network</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {activeSuperstars.map((member) => {
-                  const memberData = root.members.find(m => 
-                    m.groupId === session.group!.id && m.userId === member.id
-                  )
-                  
-                  return (
-                    <div key={member.id} className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback>
-                          {member.name?.split(' ').map(n => n[0]).join('') || member.email[0].toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{member.name || member.email}</p>
-                        <p className="text-xs text-muted-foreground capitalize">
-                          {memberData?.role?.toLowerCase()}
-                        </p>
-                      </div>
-                      {memberData?.role === 'WARRIOR' && (
-                        <Badge variant="secondary" className="text-xs">
-                          Warrior
-                        </Badge>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="pt-4 border-t border-border mt-4">
-                <Button variant="outline" size="sm" className="w-full" asChild>
-                  <Link href="/dashboard/members">Manage Superstars</Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

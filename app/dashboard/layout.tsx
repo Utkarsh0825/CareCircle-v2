@@ -21,7 +21,6 @@ import {
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
-import { TourTrigger } from '@/components/tour/tour-trigger'
 
 export default function DashboardLayout({
   children,
@@ -72,6 +71,21 @@ export default function DashboardLayout({
     return null // Will redirect
   }
 
+  // Get user's role in this group
+  const { getRoot } = require('@/lib/localStore')
+  const root = getRoot()
+  const userMembership = root.members.find(
+    m => m.groupId === session.group!.id && m.userId === session.user!.id && m.status === 'ACTIVE'
+  )
+  const userRole = userMembership?.role || 'CAREGIVER'
+  const isPatient = userRole === 'PATIENT'
+
+  // Check if user has multiple memberships
+  const userMemberships = root.members.filter(
+    m => m.userId === session.user!.id && m.status === 'ACTIVE'
+  )
+  const hasMultipleCircles = userMemberships.length > 1
+
   const navigation = [
     { name: 'Home', href: '/dashboard', icon: Home },
     { name: 'Calendar', href: '/dashboard/calendar', icon: Calendar },
@@ -100,14 +114,24 @@ export default function DashboardLayout({
               <div className="text-sm">
                 <span className="text-muted-foreground">Signed in as:</span>
                 <span className="ml-1 font-medium">{session.user.name || session.user.email}</span>
+                <span className="ml-2 text-xs px-2 py-1 bg-muted rounded">
+                  {isPatient ? 'Patient' : 'Caregiver'}
+                </span>
               </div>
+              {hasMultipleCircles && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/portal">
+                    Switch Circle
+                  </Link>
+                </Button>
+              )}
               <Button
                 id="theme-toggle"
                 variant="outline"
                 size="sm"
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               >
-                {theme === 'dark' ? (
+                {mounted && theme === 'dark' ? (
                   <Sun className="h-4 w-4" />
                 ) : (
                   <Moon className="h-4 w-4" />
@@ -119,7 +143,6 @@ export default function DashboardLayout({
                   Dev Mailbox
                 </Button>
               </Link>
-              <TourTrigger page="dashboard" variant="outline" size="sm" />
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out

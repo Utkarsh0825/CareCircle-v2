@@ -15,13 +15,16 @@ export function AutoLogin() {
     // Skip auto-login for auth pages
     if (pathname.startsWith('/auth/')) return
 
+    // Skip auto-login for join and portal pages to avoid conflicts
+    if (pathname === '/join' || pathname === '/portal') return
+
     // Attempt auto-login
     const success = autoLogin()
     
     if (success) {
-      // If we're on the home page, redirect to dashboard
+      // If we're on the home page, redirect to portal for role-aware routing
       if (pathname === '/') {
-        router.push('/dashboard')
+        router.push('/portal')
       }
     }
   }, [router, pathname])

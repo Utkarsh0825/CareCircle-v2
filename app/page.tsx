@@ -6,21 +6,13 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Heart, Shield, Users, Calendar, Moon, Sun, HelpCircle } from "lucide-react"
 import Link from "next/link"
 import { useTheme } from "next-themes"
-import { TourTrigger } from "@/components/tour/tour-trigger"
-import { TourWelcome } from "@/components/tour/tour-welcome"
 
 export default function HomePage() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  const [showWelcome, setShowWelcome] = useState(false)
 
   useEffect(() => {
     setMounted(true)
-    // Show welcome modal for first-time users
-    const hasSeenWelcome = localStorage.getItem('carecircle-tour-welcome-seen')
-    if (!hasSeenWelcome) {
-      setTimeout(() => setShowWelcome(true), 1000)
-    }
   }, [])
 
   if (!mounted) {
@@ -67,13 +59,12 @@ export default function HomePage() {
               size="sm"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             >
-              {theme === 'dark' ? (
+              {mounted && theme === 'dark' ? (
                 <Sun className="h-4 w-4" />
               ) : (
                 <Moon className="h-4 w-4" />
               )}
             </Button>
-            <TourTrigger page="home" variant="ghost" size="sm" />
             <Button variant="ghost" asChild>
               <Link href="/auth/signin">Sign In</Link>
             </Button>
@@ -191,12 +182,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Tour Welcome Modal */}
-      <TourWelcome 
-        page="home" 
-        isOpen={showWelcome} 
-        onClose={() => setShowWelcome(false)} 
-      />
     </div>
   )
 }

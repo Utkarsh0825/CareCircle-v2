@@ -1,22 +1,25 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useRouter } from 'next/navigation'
 
 export default function ResetThemePage() {
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
+    
     // Reset theme to default
     const htmlElement = document.documentElement
     const bodyElement = document.body
     
     if (htmlElement && bodyElement) {
-      // Clear all theme attributes
-      htmlElement.removeAttribute('data-theme')
-      bodyElement.removeAttribute('data-theme')
+      // Set theme to forest-serenity (default)
+      htmlElement.setAttribute('data-theme', 'forest-serenity')
+      bodyElement.setAttribute('data-theme', 'forest-serenity')
       
       // Remove dark mode
       htmlElement.classList.remove('dark')
@@ -34,9 +37,9 @@ export default function ResetThemePage() {
     const bodyElement = document.body
     
     if (htmlElement && bodyElement) {
-      // Clear all theme attributes
-      htmlElement.removeAttribute('data-theme')
-      bodyElement.removeAttribute('data-theme')
+      // Set theme to forest-serenity (default)
+      htmlElement.setAttribute('data-theme', 'forest-serenity')
+      bodyElement.setAttribute('data-theme', 'forest-serenity')
       
       // Remove dark mode
       htmlElement.classList.remove('dark')
@@ -49,6 +52,16 @@ export default function ResetThemePage() {
       // Reload page
       window.location.reload()
     }
+  }
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center">
+          <p>Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
