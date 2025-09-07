@@ -17,7 +17,6 @@ export default function RegisterPatientPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
-    age: '',
     email: session.user?.email || ''
   })
   const router = useRouter()
@@ -32,7 +31,7 @@ export default function RegisterPatientPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.name.trim() || !formData.age.trim()) return
+    if (!formData.name.trim()) return
 
     setIsLoading(true)
 
@@ -43,8 +42,7 @@ export default function RegisterPatientPage() {
       // Update user with additional info
       const updatedUser = {
         ...session.user!,
-        name: formData.name.trim(),
-        age: parseInt(formData.age)
+        name: formData.name.trim()
       }
 
       // Generate unique invite code
@@ -131,19 +129,6 @@ export default function RegisterPatientPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="age">Age *</Label>
-                <Input
-                  id="age"
-                  type="number"
-                  placeholder="e.g., 45"
-                  min="1"
-                  max="120"
-                  value={formData.age}
-                  onChange={(e) => setFormData(prev => ({ ...prev, age: e.target.value }))}
-                  required
-                />
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -171,7 +156,7 @@ export default function RegisterPatientPage() {
                 </div>
 
                 <div className="flex gap-2">
-                  <Button type="submit" className="flex-1" disabled={isLoading || !formData.name.trim() || !formData.age.trim()}>
+                  <Button type="submit" className="flex-1" disabled={isLoading || !formData.name.trim()}>
                     {isLoading ? 'Creating Circle...' : 'Create My Circle'}
                   </Button>
                   <Button type="button" variant="outline" asChild>
