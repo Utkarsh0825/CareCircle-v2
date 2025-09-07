@@ -17,9 +17,7 @@ function RegisterCaregiverContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
-    email: session.user?.email || '',
-    relationship: '',
-    phone: ''
+    email: session.user?.email || ''
   })
   const [groupInfo, setGroupInfo] = useState<any>(null)
   const router = useRouter()
@@ -53,7 +51,7 @@ function RegisterCaregiverContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.name.trim() || !formData.relationship.trim() || !groupInfo) return
+    if (!formData.name.trim() || !groupInfo) return
 
     setIsLoading(true)
 
@@ -63,9 +61,7 @@ function RegisterCaregiverContent() {
       // Update user with additional info
       const updatedUser = {
         ...session.user!,
-        name: formData.name.trim(),
-        relationship: formData.relationship,
-        phone: formData.phone || undefined
+        name: formData.name.trim()
       }
 
       // Update root with user info
@@ -158,36 +154,6 @@ function RegisterCaregiverContent() {
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="relationship">Relationship to Patient *</Label>
-                <Select value={formData.relationship} onValueChange={(value) => setFormData(prev => ({ ...prev, relationship: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your relationship" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="spouse">Spouse/Partner</SelectItem>
-                    <SelectItem value="parent">Parent</SelectItem>
-                    <SelectItem value="child">Child</SelectItem>
-                    <SelectItem value="sibling">Sibling</SelectItem>
-                    <SelectItem value="family">Other Family</SelectItem>
-                    <SelectItem value="friend">Friend</SelectItem>
-                    <SelectItem value="colleague">Colleague</SelectItem>
-                    <SelectItem value="neighbor">Neighbor</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number (Optional)</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="e.g., (555) 123-4567"
-                  value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                />
-              </div>
 
               <div className="space-y-4">
                 <div className="p-3 bg-muted/30 rounded-lg">
@@ -201,7 +167,7 @@ function RegisterCaregiverContent() {
                 </div>
 
                 <div className="flex gap-2">
-                  <Button type="submit" className="flex-1" disabled={isLoading || !formData.name.trim() || !formData.relationship.trim()}>
+                  <Button type="submit" className="flex-1" disabled={isLoading || !formData.name.trim()}>
                     {isLoading ? 'Joining Circle...' : 'Join Circle'}
                   </Button>
                   <Button type="button" variant="outline" asChild>

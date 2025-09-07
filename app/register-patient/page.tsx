@@ -18,10 +18,7 @@ export default function RegisterPatientPage() {
   const [formData, setFormData] = useState({
     name: '',
     age: '',
-    email: session.user?.email || '',
-    cancerType: '',
-    treatmentStage: '',
-    circleName: ''
+    email: session.user?.email || ''
   })
   const router = useRouter()
 
@@ -47,9 +44,7 @@ export default function RegisterPatientPage() {
       const updatedUser = {
         ...session.user!,
         name: formData.name.trim(),
-        age: parseInt(formData.age),
-        cancerType: formData.cancerType || undefined,
-        treatmentStage: formData.treatmentStage || undefined
+        age: parseInt(formData.age)
       }
 
       // Generate unique invite code
@@ -61,7 +56,7 @@ export default function RegisterPatientPage() {
       // Create new group
       const newGroup = {
         id: `group-${Date.now()}`,
-        name: formData.circleName.trim() || `${formData.name}'s Care Circle`,
+        name: `${formData.name}'s Care Circle`,
         description: `Support circle for ${formData.name}`,
         inviteCode,
         createdAt: now
@@ -162,54 +157,6 @@ export default function RegisterPatientPage() {
                 <p className="text-xs text-muted-foreground">
                   This email is from your sign-in
                 </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="circleName">Circle Name (Optional)</Label>
-                <Input
-                  id="circleName"
-                  type="text"
-                  placeholder="e.g., Sarah's Support Circle"
-                  value={formData.circleName}
-                  onChange={(e) => setFormData(prev => ({ ...prev, circleName: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cancerType">Cancer Type (Optional)</Label>
-                <Select value={formData.cancerType} onValueChange={(value) => setFormData(prev => ({ ...prev, cancerType: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select if you'd like to share" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="breast">Breast Cancer</SelectItem>
-                    <SelectItem value="lung">Lung Cancer</SelectItem>
-                    <SelectItem value="colon">Colon Cancer</SelectItem>
-                    <SelectItem value="prostate">Prostate Cancer</SelectItem>
-                    <SelectItem value="lymphoma">Lymphoma</SelectItem>
-                    <SelectItem value="leukemia">Leukemia</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                    <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="treatmentStage">Treatment Stage (Optional)</Label>
-                <Select value={formData.treatmentStage} onValueChange={(value) => setFormData(prev => ({ ...prev, treatmentStage: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select if you'd like to share" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="newly-diagnosed">Newly Diagnosed</SelectItem>
-                    <SelectItem value="pre-treatment">Pre-Treatment</SelectItem>
-                    <SelectItem value="active-treatment">Active Treatment</SelectItem>
-                    <SelectItem value="maintenance">Maintenance Treatment</SelectItem>
-                    <SelectItem value="remission">In Remission</SelectItem>
-                    <SelectItem value="survivorship">Survivorship</SelectItem>
-                    <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
 
               <div className="space-y-4">
