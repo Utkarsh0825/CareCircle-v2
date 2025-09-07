@@ -164,23 +164,22 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section id="cta-section" className="py-16 px-4">
+      {/* Footer */}
+      <footer className="py-8 px-4 border-t border-border bg-muted/30">
         <div className="container mx-auto max-w-4xl text-center">
-          <h3 className="text-3xl font-bold text-foreground mb-6">Ready to Get Started?</h3>
-          <p className="text-lg text-muted-foreground mb-8">
-            Join a care circle today and experience the support you deserve.
+          <p className="text-sm text-muted-foreground">
+            A product of{' '}
+            <a 
+              href="https://www.n-blk.com/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              NBLK LLC
+            </a>
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" asChild>
-              <Link href="/join">Join a Circle</Link>
-            </Button>
-            <Button size="lg" variant="outline" asChild>
-              <Link href="/auth/signin">Sign In</Link>
-            </Button>
-          </div>
         </div>
-      </section>
+      </footer>
 
     </div>
   )
